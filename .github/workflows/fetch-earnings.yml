@@ -1,1 +1,47 @@
+name: 決算データ取得 → GitHub Pages配信
 
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Scrape earnings schedule
+        run: python .github/scripts/scrape_earnings.py
+
+      - name: Copy dashboard HTML to docs
+        run: |
+          if [ -f "earnings-pro-calendar.html" ]; then
+            cp earnings-pro-calendar.html docs/index.html
+          fi
+
+      - name: Commit updated earnings.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/earnings.json docs/index.html 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: 決算データ更新 $(date +'%Y-%m-%d %H:%M JST')"
+            git push
+          fi
