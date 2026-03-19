@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>決算監視ダッシュボード PRO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#07090f;--surface:#0d1117;--card:#111827;--card2:#0c1620;
+  --border:#1a2942;--border2:#243552;
+  --txt:#e2e8f0;--txt2:#8899b4;--txt3:#3d5070;
+  --amber:#f59e0b;--amber-a:rgba(245,158,11,.13);
+  --red:#ef4444;--red-a:rgba(239,68,68,.10);
+  --green:#22c55e;--blue:#60a5fa;--teal:#2dd4bf;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.topbar{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);
+  border-bottom:1px solid var(--border);backdrop-filter:blur(14px);
+  display:flex;align-items:center;gap:12px;padding:8px 16px}
+.logo{background:linear-gradient(135deg,var(--amber),#c97a06);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  font-weight:900;font-size:15px;letter-spacing:-.5px}
+
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:var(--green);animation:pd 2s infinite}
+.dot-err{background:var(--red)}
+.dot-spin{background:var(--amber);animation:sd .9s linear infinite}
+@keyframes pd{50%{opacity:.4;transform:scale(.8)}}
+@keyframes sd{to{transform:rotate(360deg)}}
+
+.alert-strip{border-left:3px solid var(--red);
+  background:linear-gradient(90deg,rgba(239,68,68,.14),rgba(239,68,68,.04));
+  animation:pb 2s ease-in-out infinite}
+@keyframes pb{50%{border-left-color:rgba(239,68,68,.35)}}
+
+.fbar{background:rgba(10,14,22,.7);border-bottom:1px solid rgba(26,41,66,.7);
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 16px;
+  position:sticky;top:49px;z-index:40}
+.fbtn{padding:3px 12px;border-radius:3px;font-size:11.5px;font-weight:600;
+  border:1px solid var(--border);color:var(--txt2);background:var(--card);
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.fbtn:hover{border-color:var(--border2);color:var(--txt)}
+.fbtn.on{background:var(--amber-a);border-color:var(--amber);color:var(--amber)}
+.fbtn.on-red{background:var(--red-a);border-color:var(--red);color:var(--red)}
+
+.si{position:relative;flex:1;min-width:140px;max-width:260px}
+.si svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt3)}
+.si input{width:100%;background:var(--card);border:1px solid var(--border);
+  border-radius:4px;color:var(--txt);font-size:12.5px;padding:4px 10px 4px 28px}
+.si input:focus{outline:none;border-color:var(--amber)}
+.si input::placeholder{color:var(--txt3)}
+
+.date-hd{display:flex;align-items:center;gap:10px;padding:5px 16px;
+  background:linear-gradient(90deg,var(--card2),var(--bg));
+  border-left:3px solid var(--border2);position:sticky;top:88px;z-index:30}
+.date-hd.th{border-left-color:var(--teal)}
+.date-hd.wk{opacity:.5}
+
+.srow{border-bottom:1px solid rgba(26,41,66,.45);transition:background .12s}
+.srow:hover{background:rgba(255,255,255,.022)}
+.srow.pri{background:var(--amber-a);border-left:2px solid var(--amber)}
+.srow.pri:hover{background:rgba(245,158,11,.18)}
+.srow.alr{background:var(--red-a);border-left:2px solid var(--red)}
+.srow.alr.pri{background:linear-gradient(90deg,rgba(239,68,68,.1),var(--amber-a));border-left:2px solid var(--red)}
+
+.badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:2px;
+  font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap;line-height:1.5}
+.b1{background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
+.bA{background:rgba(96,165,250,.15);color:#93c5fd;border:1px solid rgba(96,165,250,.3)}
+.bO{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.3)}
+.bR{background:rgba(45,212,191,.15);color:#5eead4;border:1px solid rgba(45,212,191,.35)}
+.bAL{background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);
+  animation:bl 1.4s step-end infinite}
+@keyframes bl{50%{opacity:.45}}
+
+.pt{height:4px;background:var(--border);border-radius:2px;flex:1;position:relative;overflow:visible}
+.pf{height:100%;border-radius:2px;transition:width .5s ease}
+.pf.ov{background:linear-gradient(90deg,var(--green),#16a34a)}
+.pf.un{background:linear-gradient(90deg,var(--blue),#2563eb)}
+.pm{position:absolute;top:-3px;width:2px;height:10px;background:rgba(255,255,255,.25);transform:translateX(-50%)}
+
+.mb{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;
+  color:var(--txt2);font-size:11px;padding:4px 8px;resize:none;width:100%;
+  font-family:'Noto Sans JP',sans-serif;transition:border-color .15s}
+.mb:focus{outline:none;border-color:var(--amber);color:var(--txt)}
+.mb::placeholder{color:var(--txt3)}
+.ni{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;
+  color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:2px 6px;width:58px;text-align:right}
+.ni:focus{outline:none;border-color:var(--amber)}
+
+.shim{background:linear-gradient(90deg,var(--card) 25%,var(--border) 50%,var(--card) 75%);
+  background-size:200% 100%;animation:sh 1.4s infinite;border-radius:4px}
+@keyframes sh{to{background-position:-200% 0}}
+
+.detail{display:none;flex-direction:column;gap:8px;padding:8px 16px 12px 68px}
+.detail.open{display:flex}
+.eb{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:11px;
+  padding:2px 4px;border-radius:2px;transition:color .15s}
+.eb:hover{color:var(--txt2)}
+.eb.open{color:var(--amber)}
+
+@keyframes sc{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.sc{animation:sc .25s ease forwards}
+
+.cfg-panel{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:16px;margin:12px 16px}
+.cfg-inp{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border);
+  border-radius:4px;color:var(--txt);font-size:12px;padding:5px 10px;flex:1}
+.cfg-inp:focus{outline:none;border-color:var(--amber)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo mono">決算監視 PRO</span>
+  <span class="mono" style="font-size:11px;color:var(--txt3);margin-left:-6px">v3</span>
+  <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+    <div class="dot dot-spin" id="st-dot"></div>
+    <span class="mono" style="font-size:11px;color:var(--txt2)" id="st-txt">初期化中...</span>
+  </div>
+  <div style="flex:1"></div>
+  <span class="mono" style="font-size:11px;color:var(--txt3)" id="last-upd"></span>
+  <button onclick="loadData(true)" id="ref-btn"
+    style="display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:none;color:var(--txt2);cursor:pointer">
+    ↻ 更新
+  </button>
+  <button onclick="showConfig()" style="font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:none;color:var(--txt2);cursor:pointer">
+    ⚙ 設定
+  </button>
+</div>
+
+<div id="alert-banner" style="display:none;padding:6px 16px">
+  <div class="alert-strip" style="border-radius:4px;padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <span class="mono" style="font-size:11px;font-weight:700;color:var(--red);flex-shrink:0">🚨 10営業日アラート</span>
+    <div id="alert-items" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+</div>
+
+<div class="fbar">
+  <button class="fbtn on"  onclick="setF('all',this)">全て</button>
+  <button class="fbtn"     onclick="setF('priority',this)">★ 重点</button>
+  <button class="fbtn"     onclick="setF('alert',this)">🚨 アラート</button>
+  <button class="fbtn"     onclick="setF('order',this)">受注残</button>
+  <div style="flex:1"></div>
+  <div class="si">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.3"/>
+      <path d="M8 8l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+    </svg>
+    <input type="text" placeholder="コード・銘柄名・業種..." id="q-inp" oninput="render()">
+  </div>
+  <span class="mono" style="font-size:11px;color:var(--txt3)" id="cnt-lbl">-</span>
+</div>
+
+<!-- CONFIG PANEL -->
+<div id="cfg-panel" style="display:none">
+  <div class="cfg-panel">
+    <p class="mono" style="font-size:12px;color:var(--amber);margin-bottom:8px;font-weight:700">⚙ GitHub Pages JSON URL 設定</p>
+    <p style="font-size:11px;color:var(--txt2);margin-bottom:10px">
+      GitHub Actions でデプロイした <code style="color:var(--teal)">earnings.json</code> の URL を入力してください。<br>
+      例: <code style="color:var(--txt3)">https://{username}.github.io/{repo}/earnings.json</code>
+    </p>
+    <div style="display:flex;gap:8px">
+      <input type="text" class="cfg-inp" id="json-url-inp" placeholder="https://username.github.io/repo/earnings.json">
+      <button onclick="saveAndLoad()"
+        style="padding:5px 16px;border-radius:4px;border:none;background:var(--amber);color:#000;font-weight:700;font-size:12px;cursor:pointer;flex-shrink:0">
+        保存 &amp; 読込
+      </button>
+    </div>
+    <p style="font-size:10px;color:var(--txt3);margin-top:6px">
+      ※ URLは localStorage に保存されます。未設定時はサンプルデータで表示します。
+    </p>
+  </div>
+</div>
+
+<div id="calendar" style="padding-bottom:60px">
+  <div id="skeleton" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+    <div class="shim" style="height:24px;width:120px"></div>
+    <div class="shim" style="height:40px"></div>
+    <div class="shim" style="height:40px"></div>
+    <div class="shim" style="height:24px;width:100px;margin-top:8px"></div>
+    <div class="shim" style="height:40px"></div>
+    <div class="shim" style="height:40px"></div>
+  </div>
+</div>
+
+<div style="position:fixed;bottom:0;left:0;right:0;background:rgba(7,9,15,.9);
+  border-top:1px solid var(--border);backdrop-filter:blur(10px);
+  padding:5px 16px;display:flex;align-items:center;gap:10px">
+  <span class="mono" style="font-size:10px;color:var(--txt3)">データ: GitHub Pages → earnings.json</span>
+  <span style="color:var(--txt3)">•</span>
+  <span class="mono" style="font-size:10px;color:var(--txt3)">★重点: Excelより抽出 (20銘柄)</span>
+  <span style="color:var(--txt3)">•</span>
+  <span class="mono" style="font-size:10px;color:var(--txt3)">メモ: localStorage</span>
+  <div style="flex:1"></div>
+  <span class="mono" style="font-size:10px;color:var(--txt3)" id="ft-date"></span>
+</div>
+
+<script>
+const P={
+  6331:{name:'三菱化工機',ev:'1',sec:'機械',ord:true,oN:'受注残あり',per:10.38,yld:3.49},
+  6777:{name:'santec',ev:'1',sec:'電子機器',ord:false,oN:'',per:44.80,yld:0.99},
+  1950:{name:'日本電設',ev:'1',sec:'建設',ord:false,oN:'',per:29.76,yld:2.26},
+  6366:{name:'千代田化工',ev:'1',sec:'機械',ord:false,oN:'',per:22.60,yld:null},
+  1942:{name:'関電工',ev:'1',sec:'建設',ord:false,oN:'',per:41.20,yld:1.80},
+  3627:{name:'ネオス',ev:'A',sec:'IT',ord:false,oN:'',per:null,yld:null},
+  3658:{name:'イーブック',ev:'A',sec:'電子書籍',ord:false,oN:'',per:null,yld:null},
+  6161:{name:'エスティック',ev:'A',sec:'機械',ord:false,oN:'',per:null,yld:null},
+  3682:{name:'エンカレッジ',ev:'A',sec:'IT',ord:false,oN:'',per:null,yld:null},
+  4722:{name:'フューチャー',ev:'〇',sec:'IT',ord:false,oN:'',per:null,yld:null},
+  6255:{name:'NPC',ev:'〇',sec:'機械',ord:true,oN:'受注残〇 149億',per:null,yld:null},
+  2471:{name:'エスプール',ev:'',sec:'人材',ord:false,oN:'',per:null,yld:null},
+  6961:{name:'エンプラス',ev:'1',sec:'電子部品',ord:false,oN:'',per:22.17,yld:0.63},
+  6941:{name:'山一電機',ev:'1',sec:'電子部品',ord:false,oN:'',per:25.94,yld:2.22},
+  6501:{name:'日立',ev:'1',sec:'電気機器',ord:false,oN:'',per:29.34,yld:0.87},
+  5208:{name:'有沢製作所',ev:'1',sec:'化学',ord:false,oN:'',per:30.26,yld:4.02},
+  1980:{name:'ダイダン',ev:'1',sec:'建設',ord:false,oN:'',per:12.46,yld:2.52},
+  1944:{name:'きんでん',ev:'1',sec:'建設',ord:false,oN:'',per:42.70,yld:1.50},
+  6855:{name:'日本電子材料',ev:'1',sec:'半導体',ord:false,oN:'',per:26.04,yld:1.18},
+  2802:{name:'味の素',ev:'1',sec:'食品',ord:false,oN:'',per:21.40,yld:0.99},
+};
+const HOL=new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
+  '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06',
+  '2026-07-20','2026-08-11','2026-09-21','2026-09-23','2026-10-12',
+  '2026-11-03','2026-11-23']);
+const SAMPLE=[
+  {date:'2026-03-19',code:6777,name:'santec',market:'東P',q:'9月2Q',time:'本引後',sector:'電子機器'},
+  {date:'2026-03-23',code:3627,name:'ネオス',market:'東S',q:'3月3Q',time:'本引後',sector:'IT'},
+  {date:'2026-03-24',code:6255,name:'NPC',market:'東S',q:'3月3Q',time:'本引後',sector:'機械'},
+  {date:'2026-03-24',code:4722,name:'フューチャー',market:'東P',q:'12月本決算',time:'本引後',sector:'IT'},
+  {date:'2026-03-24',code:3658,name:'イーブック',market:'東S',q:'3月3Q',time:'本引後',sector:'電子書籍'},
+  {date:'2026-03-24',code:6857,name:'アドバンテスト',market:'東P',q:'3月3Q',time:'本引後',sector:'半導体'},
+  {date:'2026-03-25',code:2471,name:'エスプール',market:'東P',q:'11月1Q',time:'本引後',sector:'人材'},
+  {date:'2026-03-25',code:3682,name:'エンカレッジ',market:'東S',q:'3月3Q',time:'本引後',sector:'IT'},
+  {date:'2026-03-25',code:9984,name:'ソフトバンクG',market:'東P',q:'3月3Q',time:'本引後',sector:'通信'},
+  {date:'2026-03-26',code:6161,name:'エスティック',market:'東S',q:'9月2Q',time:'本引後',sector:'機械'},
+  {date:'2026-03-26',code:6331,name:'三菱化工機',market:'東S',q:'3月3Q',time:'本引後',sector:'機械'},
+  {date:'2026-03-26',code:7203,name:'トヨタ自動車',market:'東P',q:'3月3Q',time:'本引後',sector:'自動車'},
+  {date:'2026-03-27',code:1942,name:'関電工',market:'東P',q:'3月3Q',time:'本引後',sector:'建設'},
+  {date:'2026-03-27',code:1950,name:'日本電設',market:'東P',q:'3月3Q',time:'本引後',sector:'建設'},
+  {date:'2026-03-27',code:6971,name:'京セラ',market:'東P',q:'3月3Q',time:'本引後',sector:'電子部品'},
+  {date:'2026-03-30',code:6366,name:'千代田化工',market:'東P',q:'3月3Q',time:'本引後',sector:'機械'},
+  {date:'2026-03-30',code:1944,name:'きんでん',market:'東P',q:'3月3Q',time:'本引後',sector:'建設'},
+  {date:'2026-03-30',code:6941,name:'山一電機',market:'東S',q:'3月3Q',time:'本引後',sector:'電子部品'},
+  {date:'2026-03-30',code:5208,name:'有沢製作所',market:'東S',q:'3月3Q',time:'本引後',sector:'化学'},
+  {date:'2026-03-31',code:1980,name:'ダイダン',market:'東P',q:'3月3Q',time:'本引後',sector:'建設'},
+  {date:'2026-03-31',code:6961,name:'エンプラス',market:'東P',q:'3月3Q',time:'本引後',sector:'電子部品'},
+  {date:'2026-03-31',code:6855,name:'日本電子材料',market:'東P',q:'3月3Q',time:'本引後',sector:'半導体'},
+  {date:'2026-03-31',code:6501,name:'日立',market:'東P',q:'3月3Q',time:'本引後',sector:'電気機器'},
+  {date:'2026-04-01',code:2802,name:'味の素',market:'東P',q:'3月3Q',time:'本引後',sector:'食品'},
+];
+
+let allData=[];let activeF='all';
+
+function isBiz(d){return d.getDay()!==0&&d.getDay()!==6&&!HOL.has(d.toISOString().slice(0,10))}
+function bizBetween(from,to){let c=0,d=new Date(from);d.setDate(d.getDate()+1);while(d<to){if(isBiz(d))c++;d.setDate(d.getDate()+1);}return c;}
+function today0(){return new Date(new Date().toISOString().slice(0,10)+'T00:00:00')}
+function todayStr(){return today0().toISOString().slice(0,10)}
+function fmtJP(ds){
+  const d=new Date(ds+'T00:00:00');
+  const dw=['日','月','火','水','木','金','土'][d.getDay()];
+  const col=d.getDay()===0||HOL.has(ds)?'#ef4444':d.getDay()===6?'#60a5fa':'var(--txt2)';
+  return{m:d.getMonth()+1,dd:d.getDate(),dw,col,isWk:d.getDay()===0||d.getDay()===6||HOL.has(ds)};
+}
+
+function saveMemo(k,v){try{localStorage.setItem('m_'+k,v)}catch(e){}}
+function loadMemo(k){try{return localStorage.getItem('m_'+k)||''}catch(e){return''}}
+function saveProg(k,v){try{localStorage.setItem('p_'+k,v)}catch(e){}}
+function loadProg(k){try{return localStorage.getItem('p_'+k)||''}catch(e){return''}}
+
+function getJU(){try{return localStorage.getItem('earnings_json_url')||''}catch(e){return''}}
+function showConfig(){
+  const p=document.getElementById('cfg-panel');
+  const v=p.style.display!=='none';
+  p.style.display=v?'none':'block';
+  if(!v)document.getElementById('json-url-inp').value=getJU();
+}
+function saveAndLoad(){
+  const u=document.getElementById('json-url-inp').value.trim();
+  try{localStorage.setItem('earnings_json_url',u)}catch(e){}
+  document.getElementById('cfg-panel').style.display='none';
+  loadData(true);
+}
+
+async function loadData(force=false){
+  setSt('spin','データ取得中...');
+  document.getElementById('ref-btn').disabled=true;
+  const url=getJU();
+  if(!url){
+    allData=SAMPLE;setSt('err','⚙ 設定でJSONのURLを入力してください（今はサンプル表示）');
+    document.getElementById('last-upd').textContent='サンプルデータ';
+    finish();return;
+  }
+  try{
+    const r=await fetch(url,{cache:force?'reload':'default'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    allData=j.earnings||[];
+    setSt('ok',allData.length+'件取得 ('+(j.source||'')+'）');
+    const t=j.generated_at?new Date(j.generated_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    document.getElementById('last-upd').textContent=t?'更新: '+t:'';
+  }catch(e){
+    allData=SAMPLE;setSt('err','取得失敗→サンプル表示 ('+e.message+')');
+    document.getElementById('last-upd').textContent='';
+  }
+  finish();
+}
+function finish(){document.getElementById('ref-btn').disabled=false;document.getElementById('skeleton').style.display='none';render();}
+function setSt(s,t){
+  const d=document.getElementById('st-dot');
+  const x=document.getElementById('st-txt');
+  d.className='dot '+(s==='ok'?'dot-ok':s==='spin'?'dot-spin':'dot-err');
+  x.textContent=t;
+}
+
+function setF(f,btn){
+  activeF=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on','on-red'));
+  btn.classList.add(f==='alert'?'on-red':'on');
+  render();
+}
+function getFiltered(){
+  const q=document.getElementById('q-inp').value.toLowerCase().trim();
+  const now=today0();
+  return allData.filter(e=>{
+    const p=P[e.code];const ed=new Date(e.date+'T00:00:00');
+    const biz=bizBetween(now,ed);const isA=p&&biz<=10&&biz>=0;
+    if(activeF==='priority'&&!p)return false;
+    if(activeF==='alert'&&!(p&&isA))return false;
+    if(activeF==='order'&&!(p&&p.ord))return false;
+    if(q){const h=String(e.code).includes(q)||e.name.toLowerCase().includes(q)||
+      (e.sector||'').toLowerCase().includes(q)||(p&&p.sec&&p.sec.toLowerCase().includes(q));
+      if(!h)return false;}
+    return true;
+  });
+}
+
+function render(){
+  buildAlerts();
+  const items=getFiltered();
+  document.getElementById('cnt-lbl').textContent=items.length+'件';
+  if(!items.length){
+    document.getElementById('calendar').innerHTML='<div style="padding:60px;text-align:center;color:var(--txt3);font-family:\'JetBrains Mono\',monospace;font-size:13px">該当する銘柄が見つかりませんでした</div>';
+    return;
+  }
+  const grp={};
+  items.forEach(e=>{(grp[e.date]=grp[e.date]||[]).push(e)});
+  const ts=todayStr();let html='';
+  Object.keys(grp).sort().forEach(ds=>{
+    const{m,dd,dw,col,isWk}=fmtJP(ds);const isT=ds===ts;
+    html+=`<div class="date-hd${isT?' th':''}${isWk?' wk':''}">
+      <span class="mono" style="font-size:13px;font-weight:700;color:${isT?'var(--teal)':'var(--txt)'}">${m}/${dd}</span>
+      <span class="mono" style="font-size:11px;color:${col}">(${dw})</span>
+      ${isT?'<span class="badge b1" style="font-size:9px">TODAY</span>':''}
+      <span class="mono" style="font-size:10px;color:var(--txt3)">${grp[ds].length}件</span>
+    </div>`;
+    grp[ds].forEach(e=>{html+=rowHTML(e)});
+  });
+  document.getElementById('calendar').innerHTML=html;
+  items.forEach(e=>{
+    const k=e.code+'_'+e.date;
+    const m=document.getElementById('m-'+k);if(m)m.value=loadMemo(k);
+    const pg=document.getElementById('pg-'+k);if(pg){pg.value=loadProg(e.code);updateBar(e.code,e.date);}
+  });
+}
+
+function rowHTML(e){
+  const p=P[e.code];const ip=!!p;
+  const now=today0();const ed=new Date(e.date+'T00:00:00');
+  const biz=bizBetween(now,ed);const isA=ip&&biz<=10&&biz>=0;
+  let rc='srow sc';if(ip&&isA)rc+=' alr pri';else if(ip)rc+=' pri';
+  const star=ip?'<span style="color:var(--amber);margin-right:3px">【★】</span>':'';
+  let bd='';
+  if(ip&&p.ev){const bc=p.ev==='1'?'b1':p.ev==='A'?'bA':'bO';bd+=`<span class="badge ${bc}">評価${p.ev}</span> `;}
+  if(ip&&p.ord)bd+=`<span class="badge bR">受注残</span> `;
+  if(isA)bd+=`<span class="badge bAL">残${biz}日</span>`;
+  const sec=(p&&p.sec)||e.sector||'';
+  const k=e.code+'_'+e.date;const rid='r-'+k;const did='d-'+k;
+  let ext='';
+  if(p){if(p.per)ext+=`<span class="mono" style="font-size:10px;color:var(--txt3)">PER ${p.per.toFixed(1)}</span>`;
+    if(p.yld)ext+=`<span class="mono" style="font-size:10px;color:var(--txt3);margin-left:8px">利回 ${p.yld}%</span>`;}
+  return `<div class="${rc}" id="${rid}">
+  <div style="display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer" onclick="toggleD('${did}','${rid}')">
+    <span class="mono" style="font-size:12px;font-weight:600;width:44px;text-align:right;flex-shrink:0;color:${ip?'var(--amber)':'var(--txt3)'}">
+      ${e.code}</span>
+    <div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
+      <span style="${ip?'font-weight:700;color:var(--txt)':'font-weight:400;color:var(--txt2)'};font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        ${star}${e.name}</span>
+      ${sec?`<span style="font-size:11px;color:var(--txt3);flex-shrink:0">${sec}</span>`:''}
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <span class="mono" style="font-size:11px;color:var(--txt3)">${e.market||''}</span>
+      <span class="mono" style="font-size:11px;color:var(--txt3);background:rgba(0,0,0,.3);border:1px solid var(--border);padding:1px 6px;border-radius:2px">${e.q||'–'}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${bd}</div>
+    <button class="eb" id="eb-${k}">▼</button>
+  </div>
+  <div class="detail" id="${did}">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="mono" style="font-size:11px;color:var(--txt3);width:56px;flex-shrink:0">進捗率</span>
+      <input type="number" class="ni" min="0" max="200" placeholder="--" id="pg-${k}"
+        oninput="saveProg(${e.code},this.value);updateBar(${e.code},'${e.date}')"
+        title="実績÷通期予想(%)を入力">
+      <span class="mono" style="font-size:11px;color:var(--txt3)">%</span>
+      <div class="pt">
+        <div class="pm" style="left:25%"></div>
+        <div class="pm" style="left:50%"></div>
+        <div class="pm" style="left:75%"></div>
+        <div class="pf" id="pf-${k}" style="width:0%"></div>
+      </div>
+      <span class="mono" style="font-size:11px;width:36px;text-align:right;flex-shrink:0;color:var(--txt3)" id="pv-${k}">--</span>
+    </div>
+    ${ext?`<div style="display:flex;gap:0">${ext}</div>`:''}
+    ${p&&p.ord?`<div style="display:flex;gap:8px;align-items:center">
+      <span class="mono" style="font-size:11px;color:var(--txt3);width:56px;flex-shrink:0">受注残</span>
+      <span style="font-size:12px;color:var(--teal)">${p.oN}</span>
+    </div>`:''}
+    <div style="display:flex;align-items:flex-start;gap:8px">
+      <span class="mono" style="font-size:11px;color:var(--txt3);width:56px;flex-shrink:0;padding-top:4px">メモ</span>
+      <textarea class="mb" rows="2" placeholder="投資判断メモ・チェックポイント..."
+        id="m-${k}" oninput="saveMemo('${k}',this.value)"></textarea>
+    </div>
+  </div>
+</div>`;
+}
+
+function toggleD(did,rid){
+  const d=document.getElementById(did);const eb=document.querySelector('#'+rid+' .eb');
+  if(!d)return;const o=d.classList.toggle('open');
+  if(eb){eb.textContent=o?'▲':'▼';eb.classList.toggle('open',o);}
+}
+function updateBar(code,date){
+  const k=code+'_'+date;
+  const pg=document.getElementById('pg-'+k);const pf=document.getElementById('pf-'+k);const pv=document.getElementById('pv-'+k);
+  if(!pg||!pf||!pv)return;
+  const v=parseFloat(pg.value);
+  if(isNaN(v)){pf.style.width='0%';pv.textContent='--';pv.style.color='var(--txt3)';return;}
+  const ov=v>=50;
+  pf.style.width=Math.min(v,100)+'%';pf.className='pf '+(ov?'ov':'un');
+  pv.textContent=v.toFixed(0)+'%';pv.style.color=ov?'var(--green)':'var(--blue)';
+}
+function buildAlerts(){
+  const now=today0();
+  const alrs=allData.filter(e=>{if(!P[e.code])return false;const ed=new Date(e.date+'T00:00:00');const biz=bizBetween(now,ed);return biz>=0&&biz<=10;})
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const bn=document.getElementById('alert-banner');
+  if(!alrs.length){bn.style.display='none';return;}
+  bn.style.display='block';
+  document.getElementById('alert-items').innerHTML=alrs.map(e=>{
+    const{m,dd}=fmtJP(e.date);const biz=bizBetween(now,new Date(e.date+'T00:00:00'));
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);border-radius:3px;padding:2px 8px">
+      <span class="mono" style="font-size:11px;font-weight:700;color:#fca5a5">${e.code}</span>
+      <span style="font-size:11px;color:var(--txt2)">${e.name}</span>
+      <span class="mono" style="font-size:10px;color:var(--txt3)">${m}/${dd}</span>
+      <span class="mono" style="font-size:11px;font-weight:700;color:#fb923c">残${biz}日</span>
+    </span>`;
+  }).join('');
+}
+
+document.getElementById('ft-date').textContent=
+  new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
+loadData();
+</script>
+</body>
+</html>
