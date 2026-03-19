@@ -1,0 +1,59 @@
+name: 週次決算レポート メール配信
+
+on:
+  schedule:
+    # 毎週日曜日 10:00 JST (= UTC 01:00)
+    - cron: '0 1 * * 0'
+  workflow_dispatch:
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Generate weekly report
+        run: python .github/scripts/generate_report.py
+
+      # ──────────────────────────────────────────────────
+      # 設定方法: GitHub > Settings > Secrets and variables > Actions
+      #   GMAIL_USER     : 送信元 Gmail アドレス
+      #   GMAIL_APP_PASS : Gmail アプリパスワード（16文字）
+      #                    取得: Googleアカウント > セキュリティ >
+      #                          2段階認証 > アプリパスワード
+      #   MAIL_TO        : improsion@gmail.com
+      # ──────────────────────────────────────────────────
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASS }}
+          subject: "【決算監視PRO】週次レポート ${{ env.REPORT_TITLE }}"
+          to: ${{ secrets.MAIL_TO }}
+          from: "決算監視PRO <${{ secrets.GMAIL_USER }}>"
+          html_body: file://report_output.html
+          body: file://report_output.txt
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-${{ github.run_id }}
+          path: |
+            report_output.html
+            report_output.txt
+          retention-days: 30

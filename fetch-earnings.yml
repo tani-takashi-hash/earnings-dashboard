@@ -1,0 +1,83 @@
+name: 決算データ取得 → GitHub Pages配信
+
+on:
+  schedule:
+    # 毎日 06:00 JST (= UTC 21:00 前日) に実行
+    - cron: '0 21 * * *'
+  # 手動実行も可能
+  workflow_dispatch:
+
+permissions:
+  contents: write  # gh-pages ブランチへの push に必要
+
+jobs:
+  fetch-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ① リポジトリをチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ② Python セットアップ
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ③ 依存パッケージをインストール
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      # ④ 決算データをスクレイプして docs/earnings.json に出力
+      - name: Scrape earnings schedule
+        run: python .github/scripts/scrape_earnings.py
+
+      # ⑤ docs/index.html をコピー（GitHub Pages の起点）
+      #    ダッシュボード HTML が docs/ 以下にある場合に有効
+      - name: Copy dashboard HTML to docs
+        run: |
+          if [ -f "earnings-pro-calendar.html" ]; then
+            cp earnings-pro-calendar.html docs/index.html
+            echo "Dashboard copied to docs/index.html"
+          fi
+
+      # ⑥ 生成した JSON + HTML を main ブランチにコミット
+      - name: Commit updated earnings.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/earnings.json docs/index.html 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: 決算データ更新 $(date +'%Y-%m-%d %H:%M JST')"
+            git push
+          fi
+
+      # ⑦ 結果サマリーを出力
+      - name: Summary
+        run: |
+          echo "## 取得結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python3 -c "
+          import json
+          data = json.load(open('docs/earnings.json'))
+          print(f\"- 生成日時: {data['generated_at']}\")
+          print(f\"- ソース: {data['source']}\")
+          print(f\"- 取得件数: {data['total']}件\")
+          priority = [e for e in data['earnings'] if e['code'] in [6331,6777,1950,6366,1942,3627,3658,6161,3682,4722,6255,2471,6961,6941,6501,5208,1980,1944,6855,2802]]
+          print(f\"- ★重点銘柄: {len(priority)}件\")
+          " >> $GITHUB_STEP_SUMMARY
+
+# ────────────────────────────────────────
+# セットアップ方法:
+#
+# 1. リポジトリの Settings > Pages で:
+#    Source: "Deploy from a branch"
+#    Branch: "main" / Folder: "/docs"
+#    → https://{username}.github.io/{repo}/earnings.json で公開される
+#
+# 2. earnings-pro-calendar.html の EARNINGS_JSON_URL を上記 URL に変更
+# ────────────────────────────────────────
