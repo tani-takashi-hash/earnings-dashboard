@@ -1,27 +1,187 @@
 {
-  "generated_at": "2026-03-19T10:00:00+09:00",
-  "source": "manual",
+  "generated_at": "2026-03-20T17:16:35.470884+09:00",
+  "source": "actions",
   "total": 20,
   "earnings": [
-    {"date":"2026-03-19","code":6777,"name":"santec","market":"東P","q":"9月2Q","time":"本引後","sector":"電子機器"},
-    {"date":"2026-03-23","code":3627,"name":"ネオス","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
-    {"date":"2026-03-24","code":6255,"name":"NPC","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
-    {"date":"2026-03-24","code":4722,"name":"フューチャー","market":"東P","q":"12月本決算","time":"本引後","sector":"IT"},
-    {"date":"2026-03-24","code":3658,"name":"イーブック","market":"東S","q":"3月3Q","time":"本引後","sector":"電子書籍"},
-    {"date":"2026-03-25","code":2471,"name":"エスプール","market":"東P","q":"11月1Q","time":"本引後","sector":"人材"},
-    {"date":"2026-03-25","code":3682,"name":"エンカレッジ","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
-    {"date":"2026-03-26","code":6161,"name":"エスティック","market":"東S","q":"9月2Q","time":"本引後","sector":"機械"},
-    {"date":"2026-03-26","code":6331,"name":"三菱化工機","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
-    {"date":"2026-03-27","code":1942,"name":"関電工","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-    {"date":"2026-03-27","code":1950,"name":"日本電設","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-    {"date":"2026-03-30","code":6366,"name":"千代田化工","market":"東P","q":"3月3Q","time":"本引後","sector":"機械"},
-    {"date":"2026-03-30","code":1944,"name":"きんでん","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-    {"date":"2026-03-30","code":6941,"name":"山一電機","market":"東S","q":"3月3Q","time":"本引後","sector":"電子部品"},
-    {"date":"2026-03-30","code":5208,"name":"有沢製作所","market":"東S","q":"3月3Q","time":"本引後","sector":"化学"},
-    {"date":"2026-03-31","code":1980,"name":"ダイダン","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-    {"date":"2026-03-31","code":6961,"name":"エンプラス","market":"東P","q":"3月3Q","time":"本引後","sector":"電子部品"},
-    {"date":"2026-03-31","code":6855,"name":"日本電子材料","market":"東P","q":"3月3Q","time":"本引後","sector":"半導体"},
-    {"date":"2026-03-31","code":6501,"name":"日立","market":"東P","q":"3月3Q","time":"本引後","sector":"電気機器"},
-    {"date":"2026-04-01","code":2802,"name":"味の素","market":"東P","q":"3月3Q","time":"本引後","sector":"食品"}
+    {
+      "date": "2026-03-20",
+      "code": 6777,
+      "name": "santec",
+      "market": "東P",
+      "q": "9月2Q",
+      "time": "本引後",
+      "sector": "電子機器"
+    },
+    {
+      "date": "2026-03-23",
+      "code": 3627,
+      "name": "ネオス",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "IT"
+    },
+    {
+      "date": "2026-03-24",
+      "code": 6255,
+      "name": "NPC",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "機械"
+    },
+    {
+      "date": "2026-03-24",
+      "code": 4722,
+      "name": "フューチャー",
+      "market": "東P",
+      "q": "12月本決算",
+      "time": "本引後",
+      "sector": "IT"
+    },
+    {
+      "date": "2026-03-24",
+      "code": 3658,
+      "name": "イーブック",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "電子書籍"
+    },
+    {
+      "date": "2026-03-25",
+      "code": 2471,
+      "name": "エスプール",
+      "market": "東P",
+      "q": "11月1Q",
+      "time": "本引後",
+      "sector": "人材"
+    },
+    {
+      "date": "2026-03-25",
+      "code": 3682,
+      "name": "エンカレッジ",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "IT"
+    },
+    {
+      "date": "2026-03-26",
+      "code": 6161,
+      "name": "エスティック",
+      "market": "東S",
+      "q": "9月2Q",
+      "time": "本引後",
+      "sector": "機械"
+    },
+    {
+      "date": "2026-03-26",
+      "code": 6331,
+      "name": "三菱化工機",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "機械"
+    },
+    {
+      "date": "2026-03-27",
+      "code": 1942,
+      "name": "関電工",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "建設"
+    },
+    {
+      "date": "2026-03-27",
+      "code": 1950,
+      "name": "日本電設",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "建設"
+    },
+    {
+      "date": "2026-03-30",
+      "code": 6366,
+      "name": "千代田化工",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "機械"
+    },
+    {
+      "date": "2026-03-30",
+      "code": 1944,
+      "name": "きんでん",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "建設"
+    },
+    {
+      "date": "2026-03-30",
+      "code": 6941,
+      "name": "山一電機",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "電子部品"
+    },
+    {
+      "date": "2026-03-30",
+      "code": 5208,
+      "name": "有沢製作所",
+      "market": "東S",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "化学"
+    },
+    {
+      "date": "2026-03-31",
+      "code": 1980,
+      "name": "ダイダン",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "建設"
+    },
+    {
+      "date": "2026-03-31",
+      "code": 6961,
+      "name": "エンプラス",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "電子部品"
+    },
+    {
+      "date": "2026-03-31",
+      "code": 6855,
+      "name": "日本電子材料",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "半導体"
+    },
+    {
+      "date": "2026-03-31",
+      "code": 6501,
+      "name": "日立",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "電気機器"
+    },
+    {
+      "date": "2026-04-01",
+      "code": 2802,
+      "name": "味の素",
+      "market": "東P",
+      "q": "3月3Q",
+      "time": "本引後",
+      "sector": "食品"
+    }
   ]
 }
