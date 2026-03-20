@@ -22,76 +22,71 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch earnings from J-Quants
+      - name: Fetch earnings from J-Quants V2
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
         run: |
-          python3 << 'EOF'
-          import requests, json, datetime
+          python3 << 'PYEOF'
+          import requests, json, datetime, os
           from pathlib import Path
 
-          API_KEY = "${{ secrets.JQUANTS_API_KEY }}"
+          api_key = os.environ["JQUANTS_API_KEY"]
+          headers = {"x-api-key": api_key}
 
-          # IDトークン取得
-          r = requests.post(
-            "https://api.jquants.com/v1/token/auth_refresh",
-            params={"refreshtoken": API_KEY}
-          )
-          id_token = r.json().get("idToken", "")
-          if not id_token:
-              print("IDトークン取得失敗:", r.text)
-              exit(1)
-
-          headers = {"Authorization": f"Bearer {id_token}"}
-
-          # 決算発表予定日を取得
           today = datetime.date.today()
           earnings = []
+
           for i in range(14):
               d = today + datetime.timedelta(days=i)
               if d.weekday() >= 5:
                   continue
-              date_str = d.strftime("%Y%m%d")
-              r2 = requests.get(
-                  "https://api.jquants.com/v1/fins/announcement",
-                  params={"date": date_str},
+              r = requests.get(
+                  "https://api.jquants.com/v2/fins/announcement_dates",
+                  params={"date": d.strftime("%Y-%m-%d")},
                   headers=headers
               )
-              data = r2.json()
-              items = data.get("announcement", [])
-              print(f"{d.isoformat()}: {len(items)}件")
+              print(f"{d}: status={r.status_code}")
+              if r.status_code != 200:
+                  print("エラー:", r.text[:200])
+                  continue
+              items = r.json().get("announcement_dates", [])
+              print(f"  {len(items)}件")
               for item in items:
+                  code_str = str(item.get("Code", "0"))
+                  try:
+                      code = int(code_str[:4])
+                  except:
+                      continue
                   earnings.append({
                       "date": d.isoformat(),
-                      "code": int(str(item.get("Code","0"))[:4]),
+                      "code": code,
                       "name": item.get("CompanyName", ""),
-                      "market": "",
-                      "q": item.get("FiscalQuarter", ""),
+                      "market": item.get("MarketCodeName", ""),
+                      "q": str(item.get("FiscalQuarter", "")),
                       "time": item.get("AnnouncementTime", "本引後"),
-                      "sector": item.get("SectorName", ""),
+                      "sector": item.get("Sector33CodeName", ""),
                   })
 
-          # フォールバック重点銘柄をマージ
-          FALLBACK=[
-            {"date":"2026-03-23","code":3627,"name":"ネオス","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
-            {"date":"2026-03-24","code":6255,"name":"NPC","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
-            {"date":"2026-03-24","code":4722,"name":"フューチャー","market":"東P","q":"12月本決算","time":"本引後","sector":"IT"},
-            {"date":"2026-03-24","code":3658,"name":"イーブック","market":"東S","q":"3月3Q","time":"本引後","sector":"電子書籍"},
-            {"date":"2026-03-25","code":2471,"name":"エスプール","market":"東P","q":"11月1Q","time":"本引後","sector":"人材"},
-            {"date":"2026-03-25","code":3682,"name":"エンカレッジ","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
-            {"date":"2026-03-26","code":6161,"name":"エスティック","market":"東S","q":"9月2Q","time":"本引後","sector":"機械"},
-            {"date":"2026-03-26","code":6331,"name":"三菱化工機","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
-            {"date":"2026-03-27","code":1942,"name":"関電工","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-            {"date":"2026-03-27","code":1950,"name":"日本電設","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-            {"date":"2026-03-30","code":6366,"name":"千代田化工","market":"東P","q":"3月3Q","time":"本引後","sector":"機械"},
-            {"date":"2026-03-30","code":1944,"name":"きんでん","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-            {"date":"2026-03-30","code":6941,"name":"山一電機","market":"東S","q":"3月3Q","time":"本引後","sector":"電子部品"},
-            {"date":"2026-03-30","code":5208,"name":"有沢製作所","market":"東S","q":"3月3Q","time":"本引後","sector":"化学"},
-            {"date":"2026-03-31","code":1980,"name":"ダイダン","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-            {"date":"2026-03-31","code":6961,"name":"エンプラス","market":"東P","q":"3月3Q","time":"本引後","sector":"電子部品"},
-            {"date":"2026-03-31","code":6855,"name":"日本電子材料","market":"東P","q":"3月3Q","time":"本引後","sector":"半導体"},
-            {"date":"2026-03-31","code":6501,"name":"日立","market":"東P","q":"3月3Q","time":"本引後","sector":"電気機器"},
-            {"date":"2026-04-01","code":2802,"name":"味の素","market":"東P","q":"3月3Q","time":"本引後","sector":"食品"},
+          FALLBACK = [
+              {"date":"2026-03-23","code":3627,"name":"ネオス","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
+              {"date":"2026-03-24","code":6255,"name":"NPC","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
+              {"date":"2026-03-24","code":4722,"name":"フューチャー","market":"東P","q":"12月本決算","time":"本引後","sector":"IT"},
+              {"date":"2026-03-24","code":3658,"name":"イーブック","market":"東S","q":"3月3Q","time":"本引後","sector":"電子書籍"},
+              {"date":"2026-03-25","code":2471,"name":"エスプール","market":"東P","q":"11月1Q","time":"本引後","sector":"人材"},
+              {"date":"2026-03-25","code":3682,"name":"エンカレッジ","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
+              {"date":"2026-03-26","code":6161,"name":"エスティック","market":"東S","q":"9月2Q","time":"本引後","sector":"機械"},
+              {"date":"2026-03-26","code":6331,"name":"三菱化工機","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
+              {"date":"2026-03-27","code":1942,"name":"関電工","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+              {"date":"2026-03-27","code":1950,"name":"日本電設","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+              {"date":"2026-03-30","code":6366,"name":"千代田化工","market":"東P","q":"3月3Q","time":"本引後","sector":"機械"},
+              {"date":"2026-03-30","code":1944,"name":"きんでん","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+              {"date":"2026-03-30","code":6941,"name":"山一電機","market":"東S","q":"3月3Q","time":"本引後","sector":"電子部品"},
+              {"date":"2026-03-30","code":5208,"name":"有沢製作所","market":"東S","q":"3月3Q","time":"本引後","sector":"化学"},
+              {"date":"2026-03-31","code":1980,"name":"ダイダン","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+              {"date":"2026-03-31","code":6961,"name":"エンプラス","market":"東P","q":"3月3Q","time":"本引後","sector":"電子部品"},
+              {"date":"2026-03-31","code":6855,"name":"日本電子材料","market":"東P","q":"3月3Q","time":"本引後","sector":"半導体"},
+              {"date":"2026-03-31","code":6501,"name":"日立","market":"東P","q":"3月3Q","time":"本引後","sector":"電気機器"},
+              {"date":"2026-04-01","code":2802,"name":"味の素","market":"東P","q":"3月3Q","time":"本引後","sector":"食品"},
           ]
           scraped = {(e["date"], e["code"]) for e in earnings}
           for fb in FALLBACK:
@@ -101,14 +96,16 @@ jobs:
           earnings.sort(key=lambda x: (x["date"], x["code"]))
           out = {
               "generated_at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(),
-              "source": "J-Quants",
+              "source": "J-Quants V2",
               "total": len(earnings),
               "earnings": earnings,
           }
           Path("docs").mkdir(exist_ok=True)
-          Path("docs/earnings.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+          Path("docs/earnings.json").write_text(
+              json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8"
+          )
           print(f"完了: {len(earnings)}件")
-          EOF
+          PYEOF
 
       - name: Commit
         run: |
