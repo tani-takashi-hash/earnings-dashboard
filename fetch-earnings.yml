@@ -2,82 +2,117 @@ name: 決算データ取得 → GitHub Pages配信
 
 on:
   schedule:
-    # 毎日 06:00 JST (= UTC 21:00 前日) に実行
     - cron: '0 21 * * *'
-  # 手動実行も可能
   workflow_dispatch:
 
 permissions:
-  contents: write  # gh-pages ブランチへの push に必要
+  contents: write
 
 jobs:
   fetch-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
-      # ① リポジトリをチェックアウト
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ② Python セットアップ
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # ③ 依存パッケージをインストール
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 lxml
+        run: pip install requests
 
-      # ④ 決算データをスクレイプして docs/earnings.json に出力
-      - name: Scrape earnings schedule
-        run: python .github/scripts/scrape_earnings.py
-
-      # ⑤ docs/index.html をコピー（GitHub Pages の起点）
-      #    ダッシュボード HTML が docs/ 以下にある場合に有効
-      - name: Copy dashboard HTML to docs
+      - name: Fetch earnings from J-Quants
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
         run: |
-          if [ -f "earnings-pro-calendar.html" ]; then
-            cp earnings-pro-calendar.html docs/index.html
-            echo "Dashboard copied to docs/index.html"
-          fi
+          python3 << 'EOF'
+          import requests, json, datetime
+          from pathlib import Path
 
-      # ⑥ 生成した JSON + HTML を main ブランチにコミット
-      - name: Commit updated earnings.json
+          API_KEY = "${{ secrets.JQUANTS_API_KEY }}"
+
+          # IDトークン取得
+          r = requests.post(
+            "https://api.jquants.com/v1/token/auth_refresh",
+            params={"refreshtoken": API_KEY}
+          )
+          id_token = r.json().get("idToken", "")
+          if not id_token:
+              print("IDトークン取得失敗:", r.text)
+              exit(1)
+
+          headers = {"Authorization": f"Bearer {id_token}"}
+
+          # 決算発表予定日を取得
+          today = datetime.date.today()
+          earnings = []
+          for i in range(14):
+              d = today + datetime.timedelta(days=i)
+              if d.weekday() >= 5:
+                  continue
+              date_str = d.strftime("%Y%m%d")
+              r2 = requests.get(
+                  "https://api.jquants.com/v1/fins/announcement",
+                  params={"date": date_str},
+                  headers=headers
+              )
+              data = r2.json()
+              items = data.get("announcement", [])
+              print(f"{d.isoformat()}: {len(items)}件")
+              for item in items:
+                  earnings.append({
+                      "date": d.isoformat(),
+                      "code": int(str(item.get("Code","0"))[:4]),
+                      "name": item.get("CompanyName", ""),
+                      "market": "",
+                      "q": item.get("FiscalQuarter", ""),
+                      "time": item.get("AnnouncementTime", "本引後"),
+                      "sector": item.get("SectorName", ""),
+                  })
+
+          # フォールバック重点銘柄をマージ
+          FALLBACK=[
+            {"date":"2026-03-23","code":3627,"name":"ネオス","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
+            {"date":"2026-03-24","code":6255,"name":"NPC","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
+            {"date":"2026-03-24","code":4722,"name":"フューチャー","market":"東P","q":"12月本決算","time":"本引後","sector":"IT"},
+            {"date":"2026-03-24","code":3658,"name":"イーブック","market":"東S","q":"3月3Q","time":"本引後","sector":"電子書籍"},
+            {"date":"2026-03-25","code":2471,"name":"エスプール","market":"東P","q":"11月1Q","time":"本引後","sector":"人材"},
+            {"date":"2026-03-25","code":3682,"name":"エンカレッジ","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
+            {"date":"2026-03-26","code":6161,"name":"エスティック","market":"東S","q":"9月2Q","time":"本引後","sector":"機械"},
+            {"date":"2026-03-26","code":6331,"name":"三菱化工機","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
+            {"date":"2026-03-27","code":1942,"name":"関電工","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+            {"date":"2026-03-27","code":1950,"name":"日本電設","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+            {"date":"2026-03-30","code":6366,"name":"千代田化工","market":"東P","q":"3月3Q","time":"本引後","sector":"機械"},
+            {"date":"2026-03-30","code":1944,"name":"きんでん","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+            {"date":"2026-03-30","code":6941,"name":"山一電機","market":"東S","q":"3月3Q","time":"本引後","sector":"電子部品"},
+            {"date":"2026-03-30","code":5208,"name":"有沢製作所","market":"東S","q":"3月3Q","time":"本引後","sector":"化学"},
+            {"date":"2026-03-31","code":1980,"name":"ダイダン","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
+            {"date":"2026-03-31","code":6961,"name":"エンプラス","market":"東P","q":"3月3Q","time":"本引後","sector":"電子部品"},
+            {"date":"2026-03-31","code":6855,"name":"日本電子材料","market":"東P","q":"3月3Q","time":"本引後","sector":"半導体"},
+            {"date":"2026-03-31","code":6501,"name":"日立","market":"東P","q":"3月3Q","time":"本引後","sector":"電気機器"},
+            {"date":"2026-04-01","code":2802,"name":"味の素","market":"東P","q":"3月3Q","time":"本引後","sector":"食品"},
+          ]
+          scraped = {(e["date"], e["code"]) for e in earnings}
+          for fb in FALLBACK:
+              if (fb["date"], fb["code"]) not in scraped:
+                  earnings.append(fb)
+
+          earnings.sort(key=lambda x: (x["date"], x["code"]))
+          out = {
+              "generated_at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(),
+              "source": "J-Quants",
+              "total": len(earnings),
+              "earnings": earnings,
+          }
+          Path("docs").mkdir(exist_ok=True)
+          Path("docs/earnings.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(f"完了: {len(earnings)}件")
+          EOF
+
+      - name: Commit
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/earnings.json docs/index.html 2>/dev/null || true
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: 決算データ更新 $(date +'%Y-%m-%d %H:%M JST')"
-            git push
-          fi
-
-      # ⑦ 結果サマリーを出力
-      - name: Summary
-        run: |
-          echo "## 取得結果" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          python3 -c "
-          import json
-          data = json.load(open('docs/earnings.json'))
-          print(f\"- 生成日時: {data['generated_at']}\")
-          print(f\"- ソース: {data['source']}\")
-          print(f\"- 取得件数: {data['total']}件\")
-          priority = [e for e in data['earnings'] if e['code'] in [6331,6777,1950,6366,1942,3627,3658,6161,3682,4722,6255,2471,6961,6941,6501,5208,1980,1944,6855,2802]]
-          print(f\"- ★重点銘柄: {len(priority)}件\")
-          " >> $GITHUB_STEP_SUMMARY
-
-# ────────────────────────────────────────
-# セットアップ方法:
-#
-# 1. リポジトリの Settings > Pages で:
-#    Source: "Deploy from a branch"
-#    Branch: "main" / Folder: "/docs"
-#    → https://{username}.github.io/{repo}/earnings.json で公開される
-#
-# 2. earnings-pro-calendar.html の EARNINGS_JSON_URL を上記 URL に変更
-# ────────────────────────────────────────
+          git add docs/earnings.json
+          git diff --staged --quiet || (git commit -m "chore: 決算データ更新 $(date +'%Y-%m-%d %H:%M JST')" && git push)
