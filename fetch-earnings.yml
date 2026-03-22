@@ -20,91 +20,91 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests beautifulsoup4 lxml
 
-      - name: Fetch earnings from J-Quants V2
-        env:
-          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+      - name: Fetch earnings from kabuyoho
         run: |
-          python3 << 'PYEOF'
-          import requests, json, datetime, os
+          python3 - << 'PYEOF'
+          import requests, json, datetime, re
           from pathlib import Path
+          from bs4 import BeautifulSoup
 
-          api_key = os.environ["JQUANTS_API_KEY"]
-          headers = {"x-api-key": api_key}
+          HEADERS = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+              "Referer": "https://kabuyoho.jp/",
+          }
+          HOL = {"2026-01-01","2026-01-12","2026-02-11","2026-02-23","2026-03-20","2026-04-29","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-07-20","2026-08-11","2026-09-21","2026-09-23","2026-10-12","2026-11-03","2026-11-23"}
+
+          def is_biz(d):
+              return d.weekday() < 5 and d.isoformat() not in HOL
+
+          def scrape(date_str, session):
+              url = f"https://kabuyoho.jp/calender?report_date={date_str.replace('-','')}"
+              try:
+                  r = session.get(url, headers=HEADERS, timeout=20)
+                  r.raise_for_status()
+              except Exception as e:
+                  print(f"  {date_str}: 失敗 {e}")
+                  return []
+              soup = BeautifulSoup(r.text, "lxml")
+              results = []
+              seen = set()
+              # リンクから銘柄コードを抽出
+              for a in soup.find_all("a", href=re.compile(r'bcode=(\d{4,5})')):
+                  m = re.search(r'bcode=(\d{4,5})', a["href"])
+                  if not m: continue
+                  code = int(m.group(1))
+                  if code in seen: continue
+                  seen.add(code)
+                  name = a.get_text(strip=True)[:30]
+                  if not name: continue
+                  # 親要素から市場・時刻を取得
+                  tr = a.find_parent("tr")
+                  market = ""
+                  timing = "本引後"
+                  sector = ""
+                  if tr:
+                      cells = tr.find_all("td")
+                      for cell in cells:
+                          t = cell.get_text(strip=True)
+                          if any(x in t for x in ["東P","東S","東G","名証","札証"]):
+                              market = t[:10]
+                          if any(x in t for x in ["本引後","引前","引後","15:00","16:00"]):
+                              timing = t[:10]
+                  results.append({
+                      "date": date_str, "code": code, "name": name,
+                      "market": market, "q": "", "time": timing, "sector": sector,
+                  })
+              print(f"  {date_str}: {len(results)}件")
+              return results
 
           today = datetime.date.today()
-          earnings = []
+          session = requests.Session()
+          all_e = []
 
-          for i in range(14):
+          import time
+          for i in range(21):
               d = today + datetime.timedelta(days=i)
-              if d.weekday() >= 5:
-                  continue
-              r = requests.get(
-                  "https://api.jquants.com/v2/fins/announcement_dates",
-                  params={"date": d.strftime("%Y-%m-%d")},
-                  headers=headers
-              )
-              print(f"{d}: status={r.status_code}")
-              if r.status_code != 200:
-                  print("エラー:", r.text[:200])
-                  continue
-              items = r.json().get("announcement_dates", [])
-              print(f"  {len(items)}件")
-              for item in items:
-                  code_str = str(item.get("Code", "0"))
-                  try:
-                      code = int(code_str[:4])
-                  except:
-                      continue
-                  earnings.append({
-                      "date": d.isoformat(),
-                      "code": code,
-                      "name": item.get("CompanyName", ""),
-                      "market": item.get("MarketCodeName", ""),
-                      "q": str(item.get("FiscalQuarter", "")),
-                      "time": item.get("AnnouncementTime", "本引後"),
-                      "sector": item.get("Sector33CodeName", ""),
-                  })
+              if not is_biz(d): continue
+              items = scrape(d.isoformat(), session)
+              all_e.extend(items)
+              time.sleep(2)
 
-          FALLBACK = [
-              {"date":"2026-03-23","code":3627,"name":"ネオス","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
-              {"date":"2026-03-24","code":6255,"name":"NPC","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
-              {"date":"2026-03-24","code":4722,"name":"フューチャー","market":"東P","q":"12月本決算","time":"本引後","sector":"IT"},
-              {"date":"2026-03-24","code":3658,"name":"イーブック","market":"東S","q":"3月3Q","time":"本引後","sector":"電子書籍"},
-              {"date":"2026-03-25","code":2471,"name":"エスプール","market":"東P","q":"11月1Q","time":"本引後","sector":"人材"},
-              {"date":"2026-03-25","code":3682,"name":"エンカレッジ","market":"東S","q":"3月3Q","time":"本引後","sector":"IT"},
-              {"date":"2026-03-26","code":6161,"name":"エスティック","market":"東S","q":"9月2Q","time":"本引後","sector":"機械"},
-              {"date":"2026-03-26","code":6331,"name":"三菱化工機","market":"東S","q":"3月3Q","time":"本引後","sector":"機械"},
-              {"date":"2026-03-27","code":1942,"name":"関電工","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-              {"date":"2026-03-27","code":1950,"name":"日本電設","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-              {"date":"2026-03-30","code":6366,"name":"千代田化工","market":"東P","q":"3月3Q","time":"本引後","sector":"機械"},
-              {"date":"2026-03-30","code":1944,"name":"きんでん","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-              {"date":"2026-03-30","code":6941,"name":"山一電機","market":"東S","q":"3月3Q","time":"本引後","sector":"電子部品"},
-              {"date":"2026-03-30","code":5208,"name":"有沢製作所","market":"東S","q":"3月3Q","time":"本引後","sector":"化学"},
-              {"date":"2026-03-31","code":1980,"name":"ダイダン","market":"東P","q":"3月3Q","time":"本引後","sector":"建設"},
-              {"date":"2026-03-31","code":6961,"name":"エンプラス","market":"東P","q":"3月3Q","time":"本引後","sector":"電子部品"},
-              {"date":"2026-03-31","code":6855,"name":"日本電子材料","market":"東P","q":"3月3Q","time":"本引後","sector":"半導体"},
-              {"date":"2026-03-31","code":6501,"name":"日立","market":"東P","q":"3月3Q","time":"本引後","sector":"電気機器"},
-              {"date":"2026-04-01","code":2802,"name":"味の素","market":"東P","q":"3月3Q","time":"本引後","sector":"食品"},
-          ]
-          scraped = {(e["date"], e["code"]) for e in earnings}
-          for fb in FALLBACK:
-              if (fb["date"], fb["code"]) not in scraped:
-                  earnings.append(fb)
+          all_e.sort(key=lambda x: (x["date"], x["code"]))
+          seen = set()
+          unique = [e for e in all_e if (e["date"],e["code"]) not in seen and not seen.add((e["date"],e["code"]))]
 
-          earnings.sort(key=lambda x: (x["date"], x["code"]))
           out = {
               "generated_at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(),
-              "source": "J-Quants V2",
-              "total": len(earnings),
-              "earnings": earnings,
+              "source": "kabuyoho.jp",
+              "total": len(unique),
+              "earnings": unique,
           }
           Path("docs").mkdir(exist_ok=True)
-          Path("docs/earnings.json").write_text(
-              json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8"
-          )
-          print(f"完了: {len(earnings)}件")
+          Path("docs/earnings.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(f"\n完了: {len(unique)}件")
           PYEOF
 
       - name: Commit
